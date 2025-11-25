@@ -27,7 +27,7 @@ SAMPLE_RATE = 16000
 MFCC_COUNT = 40
 N_FFT = 2048
 HOP_LENGTH = 512
-TIME_STEPS = 44 
+TIME_STEPS = 50 
 
 @app.route("/")
 def home():
