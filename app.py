@@ -107,7 +107,7 @@ def predict():
         label = int(np.argmax(prediction))
         
         # --- LOGIKA OTORISASI (Sesuaikan dengan label Anda) ---
-        authorized_label = 0 
+        authorized_label = 1 
         access_granted = (label == authorized_label)
 
         print("--- REQUEST SUCCESSFUL, SENDING JSON ---", file=sys.stderr) # Logging Sukses
