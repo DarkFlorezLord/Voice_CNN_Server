@@ -5,7 +5,8 @@ import numpy as np
 app = Flask(__name__)
 
 # Load Model CNN
-model = tf.keras.models.load_model("model_voice_cnn.h5")
+interpreter = tf.lite.Interpreter(model_path="model_voice_cnn.tflite")
+interpreter.allocate_tensors()
 
 @app.route("/")
 def home():
