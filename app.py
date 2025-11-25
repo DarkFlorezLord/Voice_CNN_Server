@@ -4,7 +4,9 @@ import numpy as np
 import librosa
 import io
 import soundfile as sf
-import sys # PENTING: Untuk logging error
+import sys 
+# PENTING: Untuk mengatasi file stream yang tertutup otomatis (closed file)
+# kita akan membaca semua data mentah dari request.data jika request.files gagal.
 
 app = Flask(__name__)
 
@@ -32,7 +34,7 @@ def home():
     return f"Voice Recognition API Active! Model: {MODEL_TYPE}"
 
 def extract_mfcc(audio_data):
-    # ... (fungsi ini tidak berubah)
+    # Mengubah int32 menjadi float32 (standar librosa)
     audio_data = audio_data.astype(np.float32)
 
     target_length = int(SAMPLE_RATE * 1.2)
@@ -64,21 +66,25 @@ def extract_mfcc(audio_data):
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    print("--- STARTING PREDICT REQUEST ---", file=sys.stderr) # Logging Awal
+    print("--- STARTING PREDICT REQUEST ---", file=sys.stderr) 
+    raw_data = None
     try:
         # 1. Mengakses data mentah dari multipart/form-data
         if 'audio' not in request.files:
-            print("ERROR: Missing audio file in request", file=sys.stderr)
+            print("ERROR: Missing 'audio' part in multipart request", file=sys.stderr)
             return jsonify({"error": "Missing audio file in request", "code": "E400-01"}), 400
         
         audio_file = request.files['audio']
         
-        # Baca data mentah 32-bit (little-endian)
+        # SOLUSI: Baca data mentah ke memori sekaligus. 
+        # Gunakan read() pada FileStorage object.
         raw_data = audio_file.read()
+        
         print(f"DEBUG: Read {len(raw_data)} bytes of raw data.") # LOG 1: Cek ukuran data
         
         # Konversi buffer raw data (int32) ke numpy array (int32)
         # ESP32 mengirim 32-bit integer (i4), kita ubah ke numpy array
+        # '<i4' adalah little-endian signed 32-bit integer
         audio_data_int32 = np.frombuffer(raw_data, dtype='<i4')
         print(f"DEBUG: Converted to {audio_data_int32.size} samples (expected ~19200).") # LOG 2: Cek jumlah sampel
         
@@ -88,7 +94,7 @@ def predict():
 
         # 2. Ekstraksi MFCC
         input_data = extract_mfcc(audio_data_int32)
-        print("DEBUG: MFCC extracted successfully.") # LOG 3: Pra-pemrosesan sukses
+        print("DEBUG: MFCC extracted successfully. Ready for prediction.") # LOG 3: Pra-pemrosesan sukses
         
         # 3. Prediksi
         if MODEL_TYPE == "Keras":
@@ -116,6 +122,11 @@ def predict():
     except Exception as e:
         error_message = f"Critical Error during prediction: {e}"
         print(f"ERROR: {error_message}", file=sys.stderr) # LOG KRITIS: Cetak error ke log Railway
+        
+        # Tambahkan debug info tentang raw_data jika ada
+        raw_data_size = len(raw_data) if raw_data is not None else 0
+        print(f"DEBUG_INFO: Raw data size at crash: {raw_data_size} bytes.", file=sys.stderr)
+
         return jsonify({"error": "Internal Server Error during processing", "details": str(e), "code": "E500"}), 500
 
 if __name__ == "__main__":
