@@ -32,7 +32,7 @@ MFCC_COUNT = 40
 N_FFT = 2048
 HOP_LENGTH = 512
 TIME_STEPS = 50 
-
+GAIN_FACTOR = 5.0
 # Authorized Label (Sesuai hasil training: Kelas 1 = Authorized)
 AUTHORIZED_LABEL = 1 
 
